@@ -11,9 +11,38 @@ def convert_operand_list(args):
         res.append(f"{arg['printable']}:{identifier}")
     return res
 
+def encode_var_bit(var, msb, lsb):
+    if msb == lsb:
+        return var + '{' + str(msb) + '}'
+    return var + '{' + str(msb) + '-' + str(lsb) + '}'
 
 def encode_inst(encoding):
-    return ""
+    bit_string = ""
+    var = None
+    var_msb = None
+    var_lsb = None
+    for bit in reversed(encoding):
+        if isinstance(bit, int):
+            if var:
+                bit_string += encode_var_bit(var, var_msb, var_lsb)
+                var = None
+            bit_string += str(bit)
+        elif bit['kind'] == 'var':
+            bit_string += bit['var']
+        else:
+            assert bit['kind'] == 'varbit'
+            new_var = bit['var']
+            new_idx = bit['index']
+            if var is None:
+                var = new_var
+                var_msb = var_lsb = new_idx
+            elif var == new_var and new_idx + 1 == var_lsb:
+                var_lsb = new_idx
+            else:
+                bit_string += encode_var_bit(var, var_msb, var_lsb)
+                var = new_var
+                var_msb = var_lsb = new_idx
+    return bit_string
 
 if __name__ == "__main__":
     with open(sys.argv[1]) as f:
@@ -34,7 +63,7 @@ if __name__ == "__main__":
                 continue
             if item["isPreISelOpcode"] == 1:
                 continue
-            print(json.dumps(item, indent=2))
+            # print(json.dumps(item, indent=2))
             inst_obj = dict()
             inst_obj["Name"] = name
             inst_obj["Size"] = item["Size"]
@@ -89,4 +118,4 @@ if __name__ == "__main__":
             if len(properties) > 0:
                 inst_obj["Properties"] = properties
             print(json.dumps(inst_obj, indent=2))
-            exit()
+            # exit()
