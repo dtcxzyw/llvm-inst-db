@@ -6,21 +6,8 @@ import sys
 import subprocess
 import tqdm
 import os
+from targets import SUPPORTED_TARGETS
 
-SUPPORTED_TARGETS = [
-    "RISCV",
-    "X86",
-    "AArch64",
-    "ARM",
-    "LoongArch",
-    "SystemZ",
-    "PowerPC",
-    "AMDGPU",
-    "NVPTX",
-    "WebAssembly",
-    "BPF",
-    "SPIRV",
-]
 PROPERTIES_LIST = [
     "isReturn",
     "isBranch",
@@ -57,8 +44,8 @@ def convert_operand_list(args):
 
 def encode_var_bit(var, msb, lsb):
     if msb == lsb:
-        return var + "{" + str(msb) + "}"
-    return var + "{" + str(msb) + "-" + str(lsb) + "}"
+        return var + "[" + str(msb) + "]"
+    return var + "[" + str(msb) + ":" + str(lsb) + "]"
 
 
 def encode_inst(encoding):
@@ -75,7 +62,7 @@ def encode_inst(encoding):
                 var = None
             bit_string += str(bit)
         elif bit["kind"] == "var":
-            bit_string += bit["var"]
+            bit_string += bit["var"] + '[0]'
         elif bit["kind"] == "varbit":
             new_var = bit["var"]
             new_idx = bit["index"]
@@ -94,10 +81,10 @@ def encode_inst(encoding):
     return bit_string
 
 
-def convert_json(input_json, output_json):
+def convert_json(target, input_json, output_json):
     with open(input_json) as f:
         obj = json.load(f)
-    output_list = []
+    inst_list = []
     for item in tqdm.tqdm(obj.values()):
         if not isinstance(item, dict):
             continue
@@ -141,8 +128,7 @@ def convert_json(input_json, output_json):
                 if inst_encoding:
                     inst_obj["Encoding"] = inst_encoding
             elif "X86Inst" in superclasses:
-                pass
-            elif "WebAssemblyInst" in superclasses:
+                # TODO: handle X86 inst prefixes
                 pass
 
             properties = []
@@ -151,9 +137,14 @@ def convert_json(input_json, output_json):
                     properties.append(key)
             if len(properties) > 0:
                 inst_obj["Properties"] = properties
-            output_list.append(inst_obj)
+            inst_list.append(inst_obj)
+    inst_list.sort(key=lambda x: x["Name"])
+    obj = {
+        "Target": target,
+        "Insts": inst_list,
+    }
     with open(output_json, "w") as f:
-        json.dump(output_list, f)
+        json.dump(obj, f)
 
 
 if __name__ == "__main__":
@@ -161,12 +152,14 @@ if __name__ == "__main__":
     llvm_tblgen = sys.argv[2]
     build_dir = "build"
     os.makedirs(build_dir, exist_ok=True)
+    original_dir = os.path.join(build_dir, "original")
+    os.makedirs(original_dir, exist_ok=True)
     artifact_dir = os.path.join(build_dir, "artifact")
     os.makedirs(artifact_dir, exist_ok=True)
     include_dir = os.path.join(llvm_src, "llvm/include")
     for target in SUPPORTED_TARGETS:
         print("Converting", target)
-        intermediate_json = os.path.join(build_dir, target + ".json")
+        intermediate_json = os.path.join(original_dir, target + ".json")
         target_dir = os.path.join(llvm_src, "llvm/lib/Target", target)
         target_td = target + ".td"
         if target == "PowerPC":
@@ -186,4 +179,4 @@ if __name__ == "__main__":
                 ]
             )
         artifact_json = os.path.join(artifact_dir, target + ".json")
-        convert_json(intermediate_json, artifact_json)
+        convert_json(target, intermediate_json, artifact_json)
