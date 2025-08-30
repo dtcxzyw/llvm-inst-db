@@ -117,11 +117,11 @@ def convert_json(target, input_json, output_json):
             out_ops = convert_operand_list(item["OutOperandList"]["args"])
             if len(out_ops) > 0:
                 inst_obj["Outputs"] = out_ops
-            predicates = []
+            predicates = set()
             for pred in item["Predicates"]:
-                predicates.append(pred["printable"])
+                predicates.add(pred["printable"])
             if len(predicates) > 0:
-                inst_obj["Predicates"] = predicates
+                inst_obj["Predicates"] = list(predicates)
             if "Inst" in item:
                 inst_obj["Size"] = item["Size"]
                 inst_encoding = encode_inst(item["Inst"])
@@ -136,6 +136,7 @@ def convert_json(target, input_json, output_json):
                 if item.get(key, False):
                     properties.append(key)
             if len(properties) > 0:
+                properties.sort()
                 inst_obj["Properties"] = properties
             inst_list.append(inst_obj)
     inst_list.sort(key=lambda x: x["Name"])

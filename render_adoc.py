@@ -6,6 +6,7 @@ import tqdm
 import subprocess
 import os
 from targets import SUPPORTED_TARGETS
+from functools import cmp_to_key
 
 
 def parse_encoding(encoding: str) -> list:
@@ -63,6 +64,23 @@ def parse_encoding(encoding: str) -> list:
     return res
 
 
+def compare(lhs_name, rhs_name, lhs_pred, rhs_pred, pred_count) -> int:
+    if lhs_pred == rhs_pred:
+        return -1 if lhs_name < rhs_name else 1
+    lhs_count = [-pred_count[x] for x in lhs_pred]
+    rhs_count = [-pred_count[x] for x in rhs_pred]
+    return -1 if lhs_count < rhs_count else 1
+
+
+def normalize_asm_string(asm_string: str, operands) -> str:
+    for var in operands:
+        var_name = var[var.rfind(":") + 1 :]
+        asm_string = asm_string.replace("${" + var_name + "}", var_name).replace(
+            "$" + var_name, var_name
+        )
+    return asm_string
+
+
 if __name__ == "__main__":
     build_dir = "build"
     os.makedirs(build_dir, exist_ok=True)
@@ -84,18 +102,52 @@ if __name__ == "__main__":
         with open(output_adoc, "w") as out:
             out.write(f"== {target} Target\n")
             out.write("=== Instructions\n")
+            predicates_count = dict()
+            for inst in insts:
+                for pred in inst.get("Predicates", []):
+                    predicates_count[pred] = predicates_count.get(pred, 0) + 1
+            for inst in insts:
+                preds = inst.get("Predicates", [])
+                preds.sort(key=lambda x: predicates_count[x], reverse=True)
+                inst["Predicates"] = preds
+            insts.sort(
+                key=cmp_to_key(
+                    lambda lhs, rhs: compare(
+                        lhs["Name"],
+                        rhs["Name"],
+                        lhs["Predicates"],
+                        rhs["Predicates"],
+                        predicates_count,
+                    )
+                )
+            )
             for inst in insts:
                 name = inst["Name"]
-                out.write(f"==== {name}\n")
+                preds = inst["Predicates"]
+                out.write(f"==== {name}")
+                if len(preds) > 0:
+                    out.write(" [" + ", ".join(preds) + "]")
+                out.write("\n")
                 asm_string = inst["AsmString"]
-                for var in inst.get("Inputs", []) + inst.get("Outputs", []):
-                    var_name = var[var.rfind(':') + 1:]
-                    asm_string = asm_string.replace("${" + var_name + "}", var_name).replace("$" + var_name, var_name)
+                operands = inst.get("Inputs", []) + inst.get("Outputs", [])
+                asm_string = normalize_asm_string(asm_string, operands)
                 out.write(f"[listing]\n----\n{asm_string}\n----\n")
                 if "Encoding" in inst:
                     out.write("[wavedrom, , svg]\n....\n{reg: \n")
                     out.write(str(parse_encoding(inst["Encoding"])))
                     out.write(", config:{lanes: 1, hspace:1024}}\n....\n")
+                if "Properties" in inst:
+                    out.write(
+                        "[NOTE]\n====\nProperties: "
+                        + ", ".join(inst["Properties"])
+                        + "\n====\n"
+                    )
+                if "Constraints" in inst:
+                    out.write(
+                        "[NOTE]\n====\nConstraints: "
+                        + normalize_asm_string(inst["Constraints"], operands)
+                        + "\n====\n"
+                    )
         output_html = os.path.join(html_dir, f"{target}.html")
         subprocess.check_call(
             [
@@ -106,5 +158,7 @@ if __name__ == "__main__":
                 "--require=asciidoctor-diagram",
                 "-a",
                 "data-uri",
+                "-a",
+                "compress",
             ]
         )
