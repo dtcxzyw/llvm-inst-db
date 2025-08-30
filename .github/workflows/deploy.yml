@@ -37,7 +37,7 @@ jobs:
           sudo apt-get install cmake ninja-build
           mkdir -p build && cd build
           mkdir -p llvm-build && cd llvm-build
-          cmake ../../llvm-project/llvm -DCMAKE_BUILD_TYPE=Release
+          cmake ../../llvm-project/llvm -G Ninja -DCMAKE_BUILD_TYPE=Release
           cmake --build . -j -t llvm-tblgen
 
       - name: Compile td files
