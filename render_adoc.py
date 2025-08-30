@@ -90,6 +90,25 @@ if __name__ == "__main__":
     os.makedirs(adoc_dir, exist_ok=True)
     html_dir = os.path.join(build_dir, "html")
     os.makedirs(html_dir, exist_ok=True)
+    with open(os.path.join(html_dir, "index.html"), "w") as f:
+        f.write("""<!DOCTYPE HTML>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Available Targets</title>
+</head>
+<body>
+<h1>Available Targets</h1>
+<hr>
+<ul>
+""")
+        for target in SUPPORTED_TARGETS:
+            f.write(f'<li><a href="{target}.html">{target} Target</a></li>\n')
+        f.write("""</ul>
+<hr>
+</body>
+</html>""")
+
 
     progress = tqdm.tqdm(SUPPORTED_TARGETS)
     for target in progress:
