@@ -34,7 +34,10 @@ jobs:
       - name: Build LLVM TableGen
         run: |
           sudo apt-get update
-          sudo apt-get install cmake ninja-build python3-tqdm
+          sudo apt-get install cmake ninja-build python3-tqdm asciidoctor
+          gem install asciidoctor-diagram
+          npm i wavedrom-cli -g
+
           mkdir -p build && cd build
           mkdir -p llvm-build && cd llvm-build
           cmake ../../llvm-project/llvm -G Ninja -DCMAKE_BUILD_TYPE=Release
