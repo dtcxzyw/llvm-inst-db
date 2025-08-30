@@ -34,7 +34,7 @@ jobs:
       - name: Build LLVM TableGen
         run: |
           sudo apt-get update
-          sudo apt-get install cmake ninja-build
+          sudo apt-get install cmake ninja-build python3-tqdm
           mkdir -p build && cd build
           mkdir -p llvm-build && cd llvm-build
           cmake ../../llvm-project/llvm -G Ninja -DCMAKE_BUILD_TYPE=Release
