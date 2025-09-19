@@ -61,6 +61,7 @@ def parse_encoding(encoding: str) -> list:
     if bit_string != "":
         res.append({"bits": len(bit_string), "name": bit_string})
         bit_string = ""
+    res.reverse()
     return res
 
 
