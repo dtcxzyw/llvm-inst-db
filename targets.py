@@ -6,7 +6,7 @@ SUPPORTED_TARGETS = [
     "LoongArch",
     "SystemZ",
     "PowerPC",
-    "AMDGPU",
+    # "AMDGPU",
     "NVPTX",
     "WebAssembly",
     "BPF",
